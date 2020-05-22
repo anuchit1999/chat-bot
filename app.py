@@ -2,9 +2,12 @@
 #Import Library
 import json
 import os
+import gspread
 from flask import Flask
 from flask import request
 from flask import make_response
+from oauth2client.service_account import ServiceAccountCredentials
+from pprint import pprint
 
 #----Additional from previous file----
 from random import randint
@@ -14,18 +17,21 @@ from firebase_admin import firestore
 cred = credentials.Certificate("bot1159-djtvyd-firebase-adminsdk-xb2zw-9c436fa078.json")
 firebase_admin.initialize_app(cred)
 #-------------------------------------
-
+scope = ["https://spreadsheets.google.com/feeds",'https://www.googleapis.com/auth/spreadsheets',"https://www.googleapis.com/auth/drive.file","https://www.googleapis.com/auth/drive"]
+cerds = ServiceAccountCredentials.from_json_keyfile_name("cerds.json", scope)
+client = gspread.authorize(cerds)
+sheet = client.open("Stackpython").worksheet('Sheet1')
 # Flask
 app = Flask(__name__)
 @app.route('/', methods=['POST']) #Using post as a method
 
 def MainFunction():
-
     #Getting intent from Dailogflow
     question_from_dailogflow_raw = request.get_json(silent=True, force=True)
 
     #Call generating_answer function to classify the question
     answer_from_bot = generating_answer(question_from_dailogflow_raw)
+    #-----
     
     #Make a respond back to Dailogflow
     r = make_response(answer_from_bot)
@@ -44,6 +50,8 @@ def generating_answer(question_from_dailogflow_dict):
     #Select function for answering question
     if intent_group_question_str == 'กินอะไรดี':
         answer_str = menu_recormentation()
+    elif intent_group_question_str == 'Foop': 
+        answer_str = crerr(question_from_dailogflow_dict)
     else: answer_str = "ผมไม่เข้าใจ คุณต้องการอะไร"
 
     #Build answer dict 
@@ -64,6 +72,15 @@ def menu_recormentation(): #Function for recommending menu
     #-------------------------------------
     answer_function = menu_name + ' สิ น่ากินนะ'
     return answer_function
+
+def crerr(respond_dict): 
+
+    #Getting Weight and Height
+    name = respond_dict["queryResult"]["outputContexts"][1]["parameters"]["name.original"]
+    lang = respond_dict["queryResult"]["outputContexts"][1]["parameters"]["L.original"]
+    sheet.insert_row([name,lang],2)
+    return "ลงทะเบียนเรียบร้อย"
+    
 
 #Flask
 if __name__ == '__main__':
